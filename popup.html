@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Modifier</title>
+    <style>
+      body {
+        width: 220px;
+        font-family: Arial, sans-serif;
+        padding: 15px;
+        background-color: #f8f9fa;
+        text-align: center;
+        border-radius: 8px;
+      }
+
+      h3 {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 8px;
+      }
+
+      input {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+
+      button {
+        width: 100%;
+        padding: 10px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #export-log {
+        margin-top: 10px;
+        background-color: #28a745;
+      }
+
+      #export-log:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Nhập số nhân</h3>
+    <input type="number" id="multiplier" placeholder="Nhập số">
+    <button id="save">Lưu</button>
+
+    <h3>Xuất Log</h3>
+    <button id="export-log">Tải xuống Log</button>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

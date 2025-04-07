@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Currency Modifier",
+  "version": "1.0",
+  "description": "Chỉnh sửa số tiền hiển thị trên trang web",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
