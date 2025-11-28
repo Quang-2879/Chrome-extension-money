@@ -1,19 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "Currency Modifier",
-  "version": "1.0",
+  "name": "Currency Modifier V2",
+  "version": "2.0",
   "description": "Chỉnh sửa số tiền hiển thị trên trang web",
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://adsmanager.facebook.com/*",
+    "http://adsmanager.facebook.com/*"
   ],
   "action": {
     "default_popup": "popup.html"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "https://adsmanager.facebook.com/*",
+        "http://adsmanager.facebook.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

@@ -1,101 +1,96 @@
-chrome.storage.sync.get('multiplier', function(data) {
+chrome.storage.sync.get('multiplier', function (data) {
   const multiplier = data.multiplier || 1;
 
-  // Hàm ghi log vào Chrome storage
-  function addLog(message) {
-    chrome.storage.local.get({logs: []}, function(result) {
-      const logs = result.logs;
-      logs.push(new Date().toISOString() + ": " + message);
-      chrome.storage.local.set({logs: logs});
+  if (multiplier <= 1) {
+    return;
+  }
+
+  // === Logger tiện dùng ===
+  function addLog(msg) {
+    chrome.storage.local.get({ logs: [] }, (res) => {
+      const logs = res.logs;
+      logs.push(new Date().toISOString() + ": " + msg);
+      chrome.storage.local.set({ logs });
     });
   }
 
-  // Lưu trữ giá trị gốc của các phần tử để tránh nhân nhiều lần
-  const originalValuesMap = new Map();
+  // Lưu giá trị gốc để không nhân nhiều lần
+  const originalValues = new WeakMap();
 
-  // Biểu thức chính quy để nhận diện mọi loại ký hiệu tiền tệ (bao gồm $, €, ₫, ¥, £, v.v.)
-  const currencyRegex = /[₫$€¥£₹]/g;
+  // Regex cải tiến: bắt mọi ký hiệu + tiền liền nhau
+  const currencySymbols = /[₫$€¥£₹]|đ/;
 
-  // Hàm để thay đổi số tiền
-  function changeMoneyValues() {
-    let elements = document.querySelectorAll('span._3dfi._3dfj');
-
-    if (elements.length === 0) {
-      addLog('Không tìm thấy phần tử chứa số tiền nào.');
-    } else {
-      Promise.all(Array.from(elements).map(element => {
-        return new Promise(resolve => {
-          let originalText = element.textContent.trim(); // Lấy giá trị text gốc
-
-          // Kiểm tra xem có chứa bất kỳ ký tự tiền tệ nào không
-          if (currencyRegex.test(originalText)) {
-            // Bóc tách số tiền từ chuỗi, bỏ dấu . và ký tự tiền tệ
-            let moneyValue = originalText.replace(currencyRegex, '').replace(/[\,\.\s]/g, '');
-            let originalValue = parseInt(moneyValue, 10);
-
-            // Nếu số tiền hợp lệ và chưa thay đổi
-            if (!isNaN(originalValue) && !originalValuesMap.has(element)) {
-              // Lưu giá trị gốc của phần tử này
-              originalValuesMap.set(element, originalValue);
-
-              let newValue = (originalValue * multiplier).toLocaleString('vi-VN'); // Nhân với hệ số và định dạng lại
-
-              // Nếu tiền tệ là VND (₫), loại bỏ phần thập phân
-              if (originalText.includes('₫')) {
-                newValue = newValue.split(',')[0]; // Loại bỏ phần sau dấu phẩy
-              }
-
-              addLog('Sửa ' + originalText + ' thành ' + newValue);
-
-              // Thay thế số tiền cũ bằng số tiền mới, giữ nguyên ký hiệu tiền tệ
-              element.textContent = newValue + ' ' + originalText.match(currencyRegex)[0];
-            }
-          }
-          resolve();
-        });
-      })).then(() => {
-        addLog('Hoàn thành thay đổi các phần tử.');
-      });
-    }
+  // === Hàm đọc số từ text ===
+  function extractNumber(text) {
+    return parseInt(
+      text
+        .replace(currencySymbols, '')
+        .replace(/[^\d]/g, ''), // loại ., , khoảng trắng
+      10
+    );
   }
 
-  // Chạy lại việc thay đổi tiền liên tục và mạnh mẽ
-  function repeatChange() {
-    let attempts = 0; // Đếm số lần thử
+  // === Hàm xử lý toàn bộ ===
+  function processAll() {
+    const elements = document.querySelectorAll('a.user-profile, span._3dfi._3dfj');
 
-    const intervalId = setInterval(() => {
-      attempts++;
-      addLog('Thử lần ' + attempts + ': Kiểm tra và sửa đổi số tiền.');
-      changeMoneyValues();
+    elements.forEach((el) => {
+      const text = el.textContent.trim();
 
-      if (attempts >= 2000) { // Giới hạn 2000 lần kiểm tra (tương đương 20 giây với mỗi 10ms)
-        clearInterval(intervalId); // Dừng lại sau 20 giây
-        addLog('Dừng kiểm tra sau 20 giây.');
+      // Clone regex để tránh trạng thái `.test()` sai
+      if (!(/[₫$€¥£₹]|đ/).test(text)) return;
+
+      let originalValue = originalValues.get(el);
+
+      if (!originalValue) {
+        originalValue = extractNumber(text);
+
+        if (!originalValue || isNaN(originalValue)) return;
+
+        originalValues.set(el, originalValue);
       }
-    }, 10); // Giữ thời gian chờ giữa các lần kiểm tra là 10ms
+
+      // Tính lại số đã đổi
+      let newValue = (originalValue * multiplier).toLocaleString('vi-VN');
+
+      // Nếu là VND → không có phần thập phân
+      if (text.includes("₫") || text.includes("đ")) {
+        newValue = newValue.split(',')[0];
+      }
+
+      // Lấy ký hiệu tiền tệ đầu tiên
+      const symbol = (text.match(/[₫$€¥£₹]|đ/) || [''])[0];
+
+      const replaced = `${newValue} ${symbol}`;
+      if (el.textContent !== replaced) {
+        addLog(`Sửa '${text}' → '${replaced}'`);
+        el.textContent = replaced;
+      }
+    });
   }
 
-  // Bắt đầu quá trình ngay lập tức
-  addLog('Bắt đầu quá trình ngay lập tức.');
-  repeatChange(); // Không cần setTimeout, bắt đầu ngay khi tiện ích chạy
+  addLog("Khởi động content script");
 
-  // Sử dụng MutationObserver để theo dõi sự thay đổi của DOM
-  const observer = new MutationObserver(function(mutations) {
-    mutations.forEach(mutation => {
-      addLog('Phát hiện sự thay đổi trong DOM.');
-      changeMoneyValues();  // Áp dụng lại thay đổi ngay khi DOM bị thay đổi
-    });
+  // chạy 1 lần khi load
+  processAll();
+
+  // === Debounce để tránh spam ===
+  let debounceTimer = null;
+  function debounceProcess() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(processAll, 100); // 100ms tối ưu
+  }
+
+  // === Observer theo dõi DOM thay đổi ===
+  const observer = new MutationObserver(() => {
+    addLog("Phát hiện DOM thay đổi");
+    debounceProcess();
   });
 
-  // Cấu hình Observer để theo dõi các thay đổi trong document
-  const config = {
+  observer.observe(document.body, {
     childList: true,
     subtree: true,
-    characterData: true
-  };
+    characterData: true,
+  });
 
-  // Bắt đầu quan sát các thay đổi trong toàn bộ trang
-  observer.observe(document.body, config);
-
-  addLog('Đã thiết lập xong MutationObserver và lặp kiểm tra.');
 });

@@ -22,20 +22,36 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Hàm để tạo và tải file log
-  document.getElementById('export-log').addEventListener('click', function() {
-    chrome.storage.local.get({ logs: [] }, function(result) {
-      const logs = result.logs.join('\n');
-      const blob = new Blob([logs], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
+  // document.getElementById('export-log').addEventListener('click', function() {
+  //   chrome.storage.local.get({ logs: [] }, function(result) {
+  //     const logs = result.logs.join('\n');
+  //     const blob = new Blob([logs], { type: 'text/plain' });
+  //     const url = URL.createObjectURL(blob);
 
-      // Tạo link tải xuống
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'log.txt';
-      a.click();
+  //     // Tạo link tải xuống
+  //     const a = document.createElement('a');
+  //     a.href = url;
+  //     a.download = 'log.txt';
+  //     a.click();
 
-      // Giải phóng URL Blob sau khi tải xong
-      URL.revokeObjectURL(url);
+  //     // Giải phóng URL Blob sau khi tải xong
+  //     URL.revokeObjectURL(url);
+  //   });
+  // });
+
+  // Nút Reset: xóa storage và reload tab
+  document.getElementById('reset').addEventListener('click', function() {
+    // Xóa toàn bộ storage (sync + local)
+    chrome.storage.sync.clear(() => {
+      chrome.storage.local.clear(() => {
+        console.log('Đã xóa toàn bộ storage.');
+
+        // Reload tab hiện tại
+        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+          chrome.tabs.reload(tabs[0].id);
+        });
+      });
     });
   });
+
 });
