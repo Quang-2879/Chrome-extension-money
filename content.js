@@ -20,48 +20,61 @@ chrome.storage.sync.get('multiplier', function (data) {
   // Regex cải tiến: bắt mọi ký hiệu + tiền liền nhau
   const currencySymbols = /[₫$€¥£₹]|đ/;
 
-  // === Hàm đọc số từ text ===
+  // === Hàm đọc số từ text (đã FIX lỗi thập phân) ===
   function extractNumber(text) {
-    return parseInt(
-      text
-        .replace(currencySymbols, '')
-        .replace(/[^\d]/g, ''), // loại ., , khoảng trắng
-      10
-    );
+    let cleaned = text.replace(currencySymbols, '').trim();
+
+    // Nếu dạng "20,03" → đổi về "20.03"
+    if (cleaned.includes(',')) {
+      // trường hợp kiểu EU: dấu phẩy là decimal → chuyển thành '.'
+      cleaned = cleaned.replace(/\./g, ''); // bỏ dấu . nếu là thousands
+      cleaned = cleaned.replace(',', '.');  // chuyển decimal
+    } else {
+      // trường hợp kiểu "20.03" → giữ nguyên
+      // cleaned = cleaned.replace(/[^\d.]/g, '');
+      cleaned = cleaned.replace(/\./g, ''); // bỏ dấu . nếu là thousands
+    }
+
+    const num = parseFloat(cleaned);
+    
+    return isNaN(num) ? null : num;
   }
 
   // === Hàm xử lý toàn bộ ===
   function processAll() {
-    const elements = document.querySelectorAll('a.user-profile, span._3dfi._3dfj');
+    const elements = document.querySelectorAll('span._3dfi._3dfj');
 
     elements.forEach((el) => {
       const text = el.textContent.trim();
 
-      // Clone regex để tránh trạng thái `.test()` sai
       if (!(/[₫$€¥£₹]|đ/).test(text)) return;
 
       let originalValue = originalValues.get(el);
 
-      if (!originalValue) {
+      if (originalValue == null) {
         originalValue = extractNumber(text);
-
-        if (!originalValue || isNaN(originalValue)) return;
+        
+        if (originalValue == null) return;
 
         originalValues.set(el, originalValue);
       }
 
-      // Tính lại số đã đổi
+      // Tính lại số đã đổi (vẫn giữ phần thập phân)
+      // let newValue = (originalValue * multiplier).toLocaleString('vi-VN', {
+      //   minimumFractionDigits: 2,
+      //   maximumFractionDigits: 2
+      // });
       let newValue = (originalValue * multiplier).toLocaleString('vi-VN');
 
       // Nếu là VND → không có phần thập phân
       if (text.includes("₫") || text.includes("đ")) {
-        newValue = newValue.split(',')[0];
+        newValue = (originalValue * multiplier).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
       }
 
       // Lấy ký hiệu tiền tệ đầu tiên
       const symbol = (text.match(/[₫$€¥£₹]|đ/) || [''])[0];
-
       const replaced = `${newValue} ${symbol}`;
+
       if (el.textContent !== replaced) {
         addLog(`Sửa '${text}' → '${replaced}'`);
         el.textContent = replaced;
